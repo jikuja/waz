@@ -1,0 +1,54 @@
+#!/usr/bin/env sh
+#############################################################
+# Wrapper to automate AZ CLI AZURE_CONFIG_DIR environment value usage.
+#
+# This wrapper shares common idea of jenv and mvn but only directory specific configuration files are supported
+#
+# Value for AZURE_CONFIG_DIR is persisted on .azure_config_dir file and wrapper
+# searches the file from the current working directory and from parent directories.
+#
+# If configuration file is not found wrapper invokes AZ CLI without changing environment variable values
+#
+
+#############################################################
+# Usage
+# 1) Copy az and waz* files into $PATH. Make sure az from this project has higher priority in $PATH than regular az executable
+# 2) Make sure copied files has executable bit set on
+# 3) Create .azure_config_dir config file(s)
+# 4) Create configuration file must contain directory to be configured as value for AZURE_CONFIG_DIR environment variable
+# 5) Run az command. Wrapper automatically defines if AZURE_CONFIG_DIR must be modified
+#
+
+#############################################################
+# Notes:
+# Fetch tenant information including human readable display name and default domain name:
+# az rest --method GET --uri https://management.azure.com/tenants?api-version=2020-01-01 --output table --query 'value[]'
+#
+
+set -e
+[ -n "$WAZ_DEBUG" ] && set -x
+
+# config
+AZ_TOOL_PATH="/usr/local/bin/az"
+CONFIG_FILE_TO_SEARCH=".azure_config_dir"
+
+# logic
+CONFIG_FILE="$(waz-find-config-file "$CONFIG_FILE_TO_SEARCH")"
+  
+if [ -z "$CONFIG_FILE" ]; then
+  exec "$AZ_TOOL_PATH" "$@"
+fi
+
+CONFIG_VALUE=$(waz-read-config-file "$CONFIG_FILE")
+# manual tilde expansion to $HOME
+CONFIG_VALUE="${CONFIG_VALUE/#~\//$HOME\/}"
+
+if [ -d "$CONFIG_VALUE" ] ; then
+  AZURE_CONFIG_DIR="$CONFIG_VALUE" exec "$AZ_TOOL_PATH" "$@"
+elif [ ! -e "$CONFIG_VALUE" ] ; then
+  mkdir -p $CONFIG_VALUE
+  AZURE_CONFIG_DIR="$CONFIG_VALUE" exec "$AZ_TOOL_PATH" "$@"
+else
+  echo Error: $CONFIG_VALUE exists and is not a directory
+  exit 1
+fi

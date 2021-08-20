@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Summary: read first word from <file>
+# Usage: waz-read-config-file <file>
+set -e
+[ -n "$WAZ_DEBUG" ] && set -x
+
+DATA_FILE="$1"
+
+if [ -e "$DATA_FILE" ]; then
+  # Read the first non-whitespace word from the specified version file.
+  # Be careful not to load it whole in case there's something crazy in it.
+  version=""
+  while read -a words; do
+    word="${words[0]/$'\r'/}"
+    if [ -z "$version" ] && [ -n "$word" ]; then
+      version="$word"
+    fi
+  done < <( cat "$DATA_FILE" && echo )
+
+  if [ -n "$version" ]; then
+    echo "$version"
+    exit
+  fi
+fi
+
+exit 1
