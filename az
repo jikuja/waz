@@ -32,9 +32,13 @@ set -e
 AZ_TOOL_PATH="/usr/local/bin/az"
 CONFIG_FILE_TO_SEARCH=".azure_config_dir"
 
-# logic
+# logic starts here
+if [ ! -z "$AZURE_CONFIG_DIR" ]; then
+  exec "$AZ_TOOL_PATH" "$@"
+fi
+
 CONFIG_FILE="$(waz-find-config-file "$CONFIG_FILE_TO_SEARCH")"
-  
+
 if [ -z "$CONFIG_FILE" ]; then
   exec "$AZ_TOOL_PATH" "$@"
 fi
